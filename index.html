@@ -223,7 +223,28 @@ function triggerDownload(url){
     document.body.removeChild(a);
 }
 
+</script><script>
+window.addEventListener('DOMContentLoaded', () => {
+    // مسح حقول البحث
+    document.getElementById('searchReciter').value = '';
+    document.getElementById('searchRewaya').value = '';
+    document.getElementById('multiRewaya').checked = false;
+
+    // مسح أي سور مفتوحة
+    document.querySelectorAll('.surahBtn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelectorAll('audio').forEach(audio => {
+        audio.pause();
+        audio.src = '';
+    });
+    document.querySelectorAll('div[id^="sur_"]').forEach(div => {
+        div.innerHTML = '';
+    });
+});
 </script>
+
+ 
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js")
@@ -233,4 +254,5 @@ if ("serviceWorker" in navigator) {
 </script>
 </body>
 </html>
+
 
