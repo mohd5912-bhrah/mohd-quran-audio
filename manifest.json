@@ -1,12 +1,14 @@
 {
   "name": "المكتبة الصوتية للقرآن الكريم",
   "short_name": "القرآن الصوتي",
-  "start_url": "/index.html",
+  "description": "استمع إلى القرآن الكريم مع مجموعة من القراء",
+  "start_url": "/mohd-quran-audio/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0c7b93",
   "lang": "ar",
   "dir": "rtl",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -20,4 +22,5 @@
     }
   ]
 }
+
 
