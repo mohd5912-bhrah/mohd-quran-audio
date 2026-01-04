@@ -2,7 +2,7 @@
   "name": "المكتبة الصوتية للقرآن الكريم",
   "short_name": "القرآن الصوتي",
   "description": "استمع إلى القرآن الكريم مع مجموعة من القراء",
-  "start_url": "/mohd-quran-audio/",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0c7b93",
@@ -22,5 +22,6 @@
     }
   ]
 }
+
 
 
