@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c7b93">
+
+
+<title>المكتبة الصوتية للقرآن الكريم</title>
+<style>
+body{font-family:Tahoma,sans-serif;margin:10px;background:#f9f9f9}
+.reciter{border:1px solid #ccc;padding:10px;margin-bottom:10px;border-radius:6px;background:#fff}
+.multi-reciter{background:#fff3cd;border:2px solid #f0ad4e !important}
+.multi-badge{display:inline-block;background:#d9534f;color:#fff;font-size:12px;padding:2px 6px;margin-left:6px;border-radius:4px}
+.surahBtn{margin:2px;padding:5px 7px;cursor:pointer;border:none;border-radius:4px;background:#eee}
+.surahBtn.active{background:#c00;color:#fff}
+.downloadBtn{padding:2px 5px;margin-left:2px;color:#c00;font-size:15px;cursor:pointer;border:none;background:none}
+a.serverLink{background:blue;color:yellow;text-decoration:none;padding:3px 6px;border-radius:4px}
+a.serverLink:hover{background:#900;color:#fff}
+#searchContainer{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.searchInput{padding:6px;flex:1;min-width:120px}
+@media(max-width:600px){#searchContainer{flex-direction:column}}
+</style>
+</head>
+<body>
+<div align="center">
+<div id="searchContainer">
+<input type="text" id="searchReciter" class="searchInput" placeholder="ابحث عن قارئ..." onkeyup="filterReciters()">
+<input type="text" id="searchRewaya" class="searchInput" placeholder="ابحث عن الرواية (حفص، ورش...)" onkeyup="filterReciters()">
+<label style="cursor:pointer"><input type="checkbox" id="multiRewaya" onchange="onMultiRewayaChange()"> إظهار القرّاء أصحاب أكثر من رواية فقط</label>
+</div>
+<div id="reciters"></div>
+</div>
+
+<script>
+// أسماء السور 1-114
+const surahNames = [
+"الفاتحة","البقرة","آل عمران","النساء","المائدة","الأنعام","الأعراف","الأنفال","التوبة",
+"يونس","هود","يوسف","الرعد","ابراهيم","الحجر","النحل","الإسراء","الكهف","مريم","طه",
+"الأنبياء","الحج","المؤمنون","النور","الفرقان","الشعراء","النمل","القصص","العنكبوت","الروم",
+"لقمان","السجدة","الأحزاب","سبأ","فاطر","يس","الصافات","ص","الزمر","غافر",
+"فصلت","الشورى","الزخرف","الدخان","الجاثية","الأحقاف","محمد","الفتح","الحجرات","ق",
+"الذاريات","الطور","النجم","القمر","الرحمن","الواقعة","الحديد","المجادلة","الحشر","الممتحنة",
+"الصف","الجمعة","المنافقون","التغابن","الطلاق","التحريم","الملك","القلم","الحاقة","المعارج",
+"نوح","الجن","المزمل","المدثر","القيامة","الإنسان","المرسلات","النبأ","النازعات","عبس",
+"التكوير","الانفطار","المطففين","الإنشقاق","البروج","الطارق","الأعلى","الغاشية","الفجر","البلد",
+"الشمس","الليل","الضحى","الشرح","التين","العلق","القدر","البينة","الزلزلة","العاديات",
+"القارعة","التكاثر","العصر","الهمزة","الفيل","قريش","الماعون","الكوثر","الكافرون","النصر",
+"المسد","الإخلاص","الفلق","الناس"
+];
+let recitersData = [];
+let currentAudio = null;
+ 
+// تحميل JSON
+fetch('reciters.json')
+.then(r=>r.json())
+.then(data=>{recitersData=data.reciters; renderReciters();})
+.catch(e=>console.error("JSON Error:",e));
+
+function formatSurahNumber(n){
+    n = parseInt(n,10);
+    if(n>=1 && n<=9) return "00"+n;
+    if(n>=10 && n<=99) return "0"+n;
+    return ""+n;
+}
+
+function renderReciters(){
+    const container=document.getElementById("reciters");
+    container.innerHTML="";
+    recitersData.forEach((r,i)=>{
+        const isMulti = r.moshaf.length > 1;
+        const div=document.createElement("div");
+        div.className = isMulti ? "reciter multi-reciter" : "reciter";
+        div.dataset.name = r.name;
+        div.dataset.moshafcount = r.moshaf.length;
+
+        let html=`<h3 style="color:green;margin:0">${isMulti?'<span class="multi-badge">أكثر من رواية</span>':''} ${r.name}</h3>`;
+
+        r.moshaf.forEach((m,j)=>{
+            const surDiv=`sur_${i}_${j}`;
+            const audioId=`audio_${i}_${j}`;
+            const surahs = m.surah_list.split(",").map(s=>s.trim()).filter(s=>s!=="");
+
+            html+=`
+            <div style="margin-top:6px">
+            <b style="color:green">رواية:</b> ${m.name}<br>
+            <span style="font-size:13px;color:#555">عدد السور المتوفرة فعليًا: ${surahs.length}</span><br><br>
+            <a href="#" class="serverLink" onclick="showSurahButtons('${surDiv}','${audioId}','${m.server}',[${surahs}]);return false;">عرض السور</a>
+            <div id="${surDiv}" style="margin-top:6px"></div>
+            </div>`;
+        });
+
+        div.innerHTML=html;
+        container.appendChild(div);
+    });
+}
+
+function filterReciters(){
+    const r=document.getElementById("searchReciter").value.toLowerCase();
+    const w=document.getElementById("searchRewaya").value.toLowerCase();
+    const m=document.getElementById("multiRewaya").checked;
+
+    document.querySelectorAll(".reciter").forEach(c=>{
+        const name=c.dataset.name.toLowerCase();
+        const text=c.innerText.toLowerCase();
+        const count=parseInt(c.dataset.moshafcount);
+        const show=name.includes(r) && text.includes(w) && (!m || count>1);
+        c.style.display=show?"block":"none";
+    });
+}
+function onMultiRewayaChange(){
+    const checkbox = document.getElementById("multiRewaya");
+
+    if (checkbox.checked) {
+        // تفريغ البحث مرة واحدة فقط
+        document.getElementById("searchReciter").value = "";
+    }
+
+    filterReciters();
+}
+
+function showSurahButtons(divId,audioId,server,surahArray){
+    const div=document.getElementById(divId);
+    if(div.innerHTML.trim()!==""){div.innerHTML=""; return;}
+
+    let html=`<audio id="${audioId}" controls style="width:100%;margin-bottom:6px"></audio><br>`;
+
+    surahArray.forEach(s=>{
+        const num=formatSurahNumber(s);
+        const idx=parseInt(s,10)-1;
+        const name=surahNames[idx]||("سورة "+s);
+
+        html+=`<button class="surahBtn" onclick="toggleSurah('${audioId}','${server}${num}.mp3',this)">${name}</button>
+        <button class="downloadBtn" onclick="downloadSurah('${server}${num}.mp3')">&#8681;</button>`;
+    });
+
+    div.innerHTML=html;
+}
+
+function getAlternativeUrl(originalUrl){
+    const parts = originalUrl.split("/");
+    const filename = parts.pop(); // مثل "049.mp3"
+    const nameOnly = filename.replace(".mp3","");
+
+    // إذا بدأ بـ 0 ⇒ حذف كل الأصفار
+    const plainNumber = nameOnly.replace(/^0+/, "");
+
+    // إذا لا يزال نفس الاسم ⇒ لا بديل
+    if(plainNumber === nameOnly) return null;
+
+    // إعادة بناء الرابط بدون أصفار
+    return parts.join("/") + "/" + plainNumber + ".mp3";
+}
+
+
+
+function toggleSurah(audioId, url, btn){
+    const audio = document.getElementById(audioId);
+
+    // أوقف المشغل السابق إن وجد
+    if(currentAudio && currentAudio !== audio){
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+    }
+
+    // إذا هو نفس URL و يعمل الآن → أوقفه
+    if(audio.src === url && !audio.paused){
+        audio.pause();
+        btn.classList.remove("active");
+        return;
+    }
+
+    // تشغيل جديد أو إعادة تشغيل
+    audio.src = url;
+    audio.play().catch(() => {});
+
+    // في حال الخطأ (404 أو غير موجود)
+    audio.onerror = function(){
+        const altUrl = getAlternativeUrl(url);
+
+        if(altUrl && altUrl !== url){
+            audio.src = altUrl;
+            audio.play().catch(() => {});
+        } else {
+            console.error("الملف غير موجود حتى بالبديل:", url);
+        }
+    };
+
+    // تأشير الزر الحالي
+    btn.parentNode.querySelectorAll(".surahBtn")
+        .forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    currentAudio = audio;
+}
+
+
+function downloadSurah(url){
+    fetch(url, { method: 'HEAD' }) // تحقق أولاً إذا الملف موجود
+    .then(res => {
+        if(res.ok){
+            triggerDownload(url);
+        } else {
+            const altUrl = getAlternativeUrl(url);
+            if(altUrl){
+                triggerDownload(altUrl);
+            } else {
+                alert("الملف غير موجود للتحميل!");
+            }
+        }
+    }).catch(() => alert("خطأ أثناء التحقق من الملف!"));
+}
+
+function triggerDownload(url){
+    const a = document.createElement("a");
+    a.href = url;
+    a.setAttribute("download","");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js")
+    .then(()=>console.log("PWA Ready"))
+    .catch(err=>console.error("SW error", err));
+}
+</script>
+</body>
+</html>
