@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c7b93">
+<title>المكتبة الصوتية للقرآن الكريم</title>
+<style>
+body{font-family:Tahoma,sans-serif;margin:10px;background:#f9f9f9}
+.reciter{border:1px solid #ccc;padding:10px;margin-bottom:10px;border-radius:6px;background:#fff}
+.multi-reciter{background:#fff3cd;border:2px solid #f0ad4e !important}
+.multi-badge{display:inline-block;background:#d9534f;color:#fff;font-size:12px;padding:2px 6px;margin-left:6px;border-radius:4px}
+.surahBtn{margin:2px;padding:5px 7px;cursor:pointer;border:none;border-radius:4px;background:#eee}
+.surahBtn.active{background:#c00;color:#fff}
+.downloadBtn{padding:2px 5px;margin-left:2px;color:#c00;font-size:15px;cursor:pointer;border:none;background:none}
+a.serverLink{background:blue;color:yellow;text-decoration:none;padding:3px 6px;border-radius:4px}
+a.serverLink:hover{background:#900;color:#fff}
+#searchContainer{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.searchInput{padding:6px;flex:1;min-width:120px}
+@media(max-width:600px){#searchContainer{flex-direction:column}}
+</style>
+</head>
+<body>
+<div align="center">
+<div id="searchContainer">
+<input type="text" id="searchReciter" class="searchInput" placeholder="ابحث عن قارئ..." onkeyup="filterReciters()">
+<input type="text" id="searchRewaya" class="searchInput" placeholder="ابحث عن الرواية (حفص، ورش...)" onkeyup="filterReciters()">
+<label style="cursor:pointer"><input type="checkbox" id="multiRewaya" onchange="multiRewayaChecked()">عرض القرّاء لأكثر من رواية</label>
+</div>
+<div id="reciters"></div>
+</div>
+
+<script>
+// خريطة السور الصحيحة 1-114
+const surahNames = [
+"الفاتحة","البقرة","آل عمران","النساء","المائدة","الأنعام","الأعراف","الأنفال","التوبة",
+"يونس","هود","يوسف","الرعد","ابراهيم","الحجر","النحل","الإسراء","الكهف","مريم","طه",
+"الأنبياء","الحج","المؤمنون","النور","الفرقان","الشعراء","النمل","القصص","العنكبوت","الروم",
+"لقمان","السجدة","الأحزاب","سبأ","فاطر","يس","الصافات","ص","الزمر","غافر",
+"فصلت","الشورى","الزخرف","الدخان","الجاثية","الأحقاف","محمد","الفتح","الحجرات","ق",
+"الذاريات","الطور","النجم","القمر","الرحمن","الواقعة","الحديد","المجادلة","الحشر","الممتحنة",
+"الصف","الجمعة","المنافقون","التغابن","الطلاق","التحريم","الملك","الحاقة","المعارج",
+"نوح","الجن","المزمل","المدثر","القيامة","الإنسان","المرسلات","النبأ","النازعات","عبس",
+"التكوير","الانفطار","المطففين","الإنشقاق","البروج","الطارق","الأعلى","الغاشية","الفجر","البلد",
+"الشمس","الليل","الضحى","الشرح","التين","العلق","القدر","البينة","الزلزلة","العاديات",
+"القارعة","التكاثر","العصر","الهمزة","الفيل","قريش","الماعون","الكوثر","الكافرون","النصر",
+"المسد","الإخلاص","الفلق","الناس"
+];
+
+let recitersData = [];
+
+// تحميل JSON
+fetch('reciters-unicode.json')
+.then(r=>r.json())
+.then(data=>{recitersData=data.reciters; renderReciters();})
+.catch(e=>console.error("JSON Error:",e));
+
+function renderReciters(){
+    const container=document.getElementById("reciters");
+    container.innerHTML="";
+    recitersData.forEach((r,i)=>{
+        const isMulti = r.moshaf.length > 1;
+        const div=document.createElement("div");
+        div.className = isMulti ? "reciter multi-reciter" : "reciter";
+        div.dataset.name = r.name;
+        div.dataset.moshafcount = r.moshaf.length;
+
+        let html=`<h3 style="color:green;margin:0">${isMulti?'<span class="multi-badge">أكثر من رواية</span>':''} ${r.name}</h3>`;
+
+        r.moshaf.forEach((m,j)=>{
+            const surDiv=`sur_${i}_${j}`;
+            const audioId=`audio_${i}_${j}`;
+            const surCount = m.surah_list.split(',').filter(s=>s.trim()!=="").length;
+
+            html+=`
+            <div style="margin-top:6px">
+            <b style="color:green">رواية:</b> ${m.name}<br>
+            <span style="font-size:13px;color:#555">عدد السور المتوفرة فعليًا: ${surCount}</span><br><br>
+            <a href="#" class="serverLink" onclick="showSurahButtons('${surDiv}','${audioId}','${m.server}','${m.surah_list}');return false;">عرض السور</a>
+            <div id="${surDiv}" style="margin-top:6px"></div>
+            </div>`;
+        });
+
+        div.innerHTML=html;
+        container.appendChild(div);
+    });
+}
+
+function filterReciters(){
+    const r=document.getElementById("searchReciter").value.toLowerCase();
+    const w=document.getElementById("searchRewaya").value.toLowerCase();
+    const m=document.getElementById("multiRewaya").checked;
+
+    document.querySelectorAll(".reciter").forEach(c=>{
+        const name=c.dataset.name.toLowerCase();
+        const text=c.innerText.toLowerCase();
+        const count=parseInt(c.dataset.moshafcount);
+        const show=name.includes(r) && text.includes(w) && (!m || count>1);
+        c.style.display=show?"block":"none";
+    });
+}
+
+// تفريغ البحث عند التأشير على أكثر من رواية
+function multiRewayaChecked(){
+    if(document.getElementById("multiRewaya").checked){
+        document.getElementById("searchReciter").value = '';
+    }
+    filterReciters();
+}
+
+// تنسيق رقم السورة حسب القاعدة
+function formatSurahNumber(num){
+    if(num >=1 && num <=9) return '00'+num;
+    if(num >=10 && num <=99) return '0'+num;
+    return ''+num;
+}
+
+function showSurahButtons(divId,audioId,server,surahList){
+    const div=document.getElementById(divId);
+    if(div.innerHTML.trim()!==""){div.innerHTML=""; return;}
+    const surahs = surahList.split(",").map(s=>s.trim()).filter(s=>s!=="");
+    let html=`<audio id="${audioId}" controls style="width:100%;margin-bottom:6px"></audio><br>`;
+    surahs.forEach(s=>{
+        const num=formatSurahNumber(parseInt(s));
+        const idx=parseInt(s,10)-1;
+        const name=surahNames[idx]||("سورة "+s);
+        html+=`<button class="surahBtn" onclick="togglePlay('${audioId}','${server}${num}.mp3',this)">${name}</button>
+        <button class="downloadBtn" onclick="downloadSurah('${server}${num}.mp3')">&#8681;</button>`;
+    });
+    div.innerHTML=html;
+}
+
+// تشغيل / إيقاف السورة عند النقر على نفس الزر
+function togglePlay(audioId,url,btn){
+    const audio=document.getElementById(audioId);
+    if(audio.src.endsWith(url)){
+        if(audio.paused) audio.play();
+        else audio.pause();
+    } else {
+        audio.src=url;
+        audio.play();
+    }
+
+    btn.parentNode.querySelectorAll(".surahBtn").forEach(b=>b.classList.remove("active"));
+    if(!audio.paused) btn.classList.add("active");
+}
+
+function downloadSurah(url){
+    const a=document.createElement("a");
+    a.href=url; a.setAttribute("download","");
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// إعادة كل الحقول عند تحميل الصفحة
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('searchReciter').value = '';
+    document.getElementById('searchRewaya').value = '';
+    document.getElementById('multiRewaya').checked = false;
+
+    document.querySelectorAll('.surahBtn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('audio').forEach(audio => {
+        audio.pause();
+        audio.src = '';
+    });
+    document.querySelectorAll('div[id^="sur_"]').forEach(div => div.innerHTML = '');
+});
+</script>
+</body>
+</html>
