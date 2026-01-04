@@ -1,7 +1,7 @@
 {
   "name": "المكتبة الصوتية للقرآن الكريم",
   "short_name": "القرآن الصوتي",
-  "start_url": "/qur.html",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0c7b93",
@@ -20,3 +20,4 @@
     }
   ]
 }
+
